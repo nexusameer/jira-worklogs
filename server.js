@@ -536,6 +536,9 @@ function startReportJob(payload) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const pathname = requestUrl.pathname;
+
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
@@ -546,12 +549,17 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && (req.url === "/" || req.url === "/index.html")) {
+  if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
     sendFile(res, path.join(__dirname, "index.html"), "text/html; charset=utf-8");
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/report") {
+  if (req.method === "GET" && (pathname === "/favicon.svg" || pathname === "/favicon.ico")) {
+    sendFile(res, path.join(__dirname, "favicon.svg"), "image/svg+xml");
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/api/report") {
     try {
       const payload = await parseBody(req);
       const report = await buildReport(payload);
@@ -562,7 +570,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/report/start") {
+  if (req.method === "POST" && pathname === "/api/report/start") {
     try {
       const payload = await parseBody(req);
       const jobId = startReportJob(payload);
@@ -573,8 +581,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && req.url.startsWith("/api/report/status")) {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (req.method === "GET" && pathname === "/api/report/status") {
     const jobId = String(requestUrl.searchParams.get("jobId") || "").trim();
     if (!jobId) {
       sendJson(res, 400, { error: "jobId is required" });
@@ -597,7 +604,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && req.url === "/api/bootstrap") {
+  if (req.method === "POST" && pathname === "/api/bootstrap") {
     try {
       const payload = await parseBody(req);
       const bootstrap = await buildBootstrap(payload);

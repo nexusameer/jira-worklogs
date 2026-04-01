@@ -58,3 +58,24 @@ jobs:
           docker tag "$IMAGE_NAME:local" "$IMAGE_NAME:${{ github.sha }}"
           docker push "$IMAGE_NAME:latest"
           docker push "$IMAGE_NAME:${{ github.sha }}"
+
+  deploy:
+    needs: build-test-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SSH and run deploy.sh
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: IMAGE_NAME,DOMAIN
+          script: |
+            export IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
+            export DOMAIN="${{ secrets.DOMAIN }}"
+            cd /root
+            ./jira-deploy.sh

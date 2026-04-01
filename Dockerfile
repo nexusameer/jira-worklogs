@@ -7,6 +7,7 @@ ENV PORT=8080
 
 COPY server.js ./
 COPY index.html ./
+COPY favicon.svg ./
 
 EXPOSE 8080
 
