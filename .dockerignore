@@ -1,0 +1,7 @@
+.git
+.github
+.env
+.env.*
+server.log
+node_modules
+Dockerfile

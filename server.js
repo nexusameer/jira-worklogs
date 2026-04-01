@@ -22,7 +22,7 @@ function loadDotEnv(filePath) {
 loadDotEnv(path.join(__dirname, ".env"));
 
 const PORT = Number(process.env.PORT || 8080);
-const JIRA_DOMAIN = process.env.JIRA_DOMAIN || "clustox.atlassian.net";
+const JIRA_DOMAIN = process.env.JIRA_DOMAIN || process.env.DOMAIN || "clustox.atlassian.net";
 const JIRA_TIMEOUT_MS = Number(process.env.JIRA_TIMEOUT_MS || 90000);
 const JIRA_MAX_RETRIES = Number(process.env.JIRA_MAX_RETRIES || 4);
 const ISSUE_CONCURRENCY = Math.max(1, Number(process.env.ISSUE_CONCURRENCY || 4));

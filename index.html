@@ -3,381 +3,754 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jira Worklog PDF Report</title>
+  <title>Jira Worklog Intelligence</title>
   <style>
     :root {
-      --bg: #f6f3ee;
+      --bg: #f3f6fb;
+      --bg-soft: #e8edf6;
       --panel: #ffffff;
-      --ink: #172033;
-      --muted: #5b6474;
-      --accent: #0c7a6a;
-      --accent-2: #095f52;
-      --border: #d6dde6;
-      --danger: #b91c1c;
+      --panel-2: #f4f7fd;
+      --panel-light: #e9effa;
+      --line: #d4dceb;
+      --line-soft: #b6c2d8;
+      --text: #1f2940;
+      --muted: #5f6f8c;
+      --accent: #4a9eff;
+      --accent-2: #2dd4bf;
+      --ok: #27c27e;
+      --warn: #f5b84d;
+      --err: #ff6b7b;
+      --shadow: 0 10px 28px rgba(33, 53, 87, 0.14);
+      --radius: 12px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      color: var(--ink);
-      background: radial-gradient(circle at 20% 0%, #fff6ea 0%, var(--bg) 44%, #edf8f7 100%);
+      color: var(--text);
+      font-family: "Sora", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 0% -5%, rgba(74, 158, 255, 0.14), transparent 55%),
+        linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
       min-height: 100vh;
-      padding: 24px;
+      padding: 40px 32px;
     }
 
-    .container {
-      max-width: 980px;
+    .app {
+      max-width: 1400px;
       margin: 0 auto;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.08);
-    }
-
-    .hero {
-      background: linear-gradient(120deg, #0c7a6a, #094d57);
-      color: #fff;
-      padding: 22px;
-    }
-
-    .hero h1 {
-      margin: 0 0 8px;
-      font-size: 1.55rem;
-    }
-
-    .hero p {
-      margin: 0;
-      opacity: 0.92;
-      line-height: 1.4;
-    }
-
-    form {
-      padding: 20px 22px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 24px;
     }
 
-    .field {
+    .topbar {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(74, 158, 255, 0.12), transparent 45%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 253, 0.98));
+      border-radius: var(--radius);
+      padding: 24px 32px;
+      box-shadow: var(--shadow);
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
     }
 
-    .field.full { grid-column: 1 / -1; }
+    .title {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #1b2742;
+    }
 
-    label {
-      font-size: 0.9rem;
+    .subtitle {
+      margin: 6px 0 0;
       color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+
+    .owner-name {
+      margin: 10px 0 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: #202b44;
+      color: #eaf1ff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .badge {
+      border: 1px solid #bec9df;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: #38517f;
+      background: rgba(74, 158, 255, 0.1);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
       font-weight: 600;
     }
 
-    input {
-      height: 40px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0 11px;
-      font-size: 0.94rem;
-    }
-
-    .project-picker {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      background: #fbfcff;
-    }
-
-    .project-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-bottom: 8px;
-      margin-bottom: 8px;
-      border-bottom: 1px solid #e8ecf2;
-      font-size: 0.9rem;
-    }
-
-    .project-grid {
+    .grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: 480px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .auth-shell {
+      max-width: 620px;
+      margin: 6px auto 0;
+    }
+
+    .auth-status {
+      min-height: 22px;
+      color: #a0a0b0;
+      font-size: 0.84rem;
+      margin-top: 10px;
+    }
+
+    .auth-status.error {
+      color: var(--err);
+      font-weight: 600;
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 255, 0.98));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(74, 158, 255, 0.08), rgba(255, 255, 255, 0.7));
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #314a78;
+      font-weight: 700;
+    }
+
+    .panel-body {
+      padding: 24px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .field {
+      display: grid;
       gap: 8px;
     }
 
-    .project-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.75rem;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #4f6186;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #c7d3e9;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      padding: 0 16px;
       font-size: 0.9rem;
-      color: #1f2937;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      font-weight: 500;
+    }
+
+    input::placeholder {
+      color: #89a;
     }
 
     input:focus {
-      border-color: var(--accent);
-      outline: 2px solid rgba(12, 122, 106, 0.15);
+      outline: none;
+      border-color: #4a9eff;
+      background: #f9fbff;
+      box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
     }
 
-    .actions {
-      padding: 0 22px 18px;
+    input[type="date"] {
+      color-scheme: light;
+      background: #ececf4;
+      border-color: #bfc4d6;
+      color: #111118;
+    }
+
+    input[type="date"]::placeholder {
+      color: #6a7286;
+    }
+
+    input[type="date"]:focus {
+      background: #f5f6fb;
+      border-color: #8aa0d6;
+      box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.12);
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.15) contrast(1.1);
+      opacity: 0.85;
+      cursor: pointer;
+    }
+
+    .btn-row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     button {
       border: 0;
-      border-radius: 10px;
-      padding: 10px 15px;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
       font-weight: 700;
+      letter-spacing: 0.3px;
       cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      flex: 1;
+      min-width: 140px;
     }
 
-    .primary { background: var(--accent); color: #fff; }
-    .primary:hover { background: var(--accent-2); }
-    .secondary { background: #e7ebf0; color: #111827; }
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
 
     button:disabled {
-      opacity: 0.6;
       cursor: not-allowed;
+      opacity: 0.45;
     }
 
-    .status {
-      margin: 0 22px 16px;
-      color: var(--muted);
-      min-height: 18px;
-      font-size: 0.92rem;
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, #3f5f97, #4a9eff);
+      box-shadow: 0 6px 14px rgba(74, 158, 255, 0.2);
     }
 
-    .status.error {
-      color: var(--danger);
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #36558c, #3f8ff0);
+      box-shadow: 0 8px 16px rgba(74, 158, 255, 0.24);
+    }
+
+    .btn-secondary {
+      color: #2e476f;
+      background: #eaf1ff;
+      border: 1px solid #bfd0f0;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #dee8fb;
+      border-color: #a8bfeb;
+    }
+
+    .project-picker {
+      border: 1px solid #c7d3e9;
+      border-radius: 8px;
+      background: #f6f9ff;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .picker-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #d4def1;
+      padding-bottom: 10px;
+      color: #4f6186;
+      font-size: 0.8rem;
       font-weight: 600;
     }
 
-    .result {
-      margin: 0 22px 22px;
-      padding: 14px;
-      border: 1px dashed var(--border);
-      border-radius: 12px;
-      background: #fafbfd;
-      display: none;
+    .picker-head label {
+      text-transform: none;
+      font-size: 0.8rem;
+      color: #4f6186;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      cursor: pointer;
+      font-weight: 600;
     }
 
-    .result h2 { margin: 0 0 10px; }
-    .result ul { margin: 8px 0 0; padding-left: 20px; }
-    .result li { margin-bottom: 4px; }
-
-    .live-panel {
-      margin: 0 22px 14px;
-      border: 1px solid var(--border);
-      background: #fbfcff;
-      border-radius: 12px;
-      padding: 10px;
-      display: none;
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      max-height: 280px;
+      overflow: auto;
+      padding-right: 4px;
     }
 
-    .live-panel h3 {
-      margin: 0 0 8px;
-      font-size: 0.95rem;
-      color: #1f2937;
+    .project-item {
+      border: 1px solid #cdd8ec;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 11px 12px;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      align-items: start;
+      gap: 9px;
+      font-size: 0.82rem;
+      color: #273960;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .project-item:hover {
+      border-color: #72a8f4;
+      background: #eef4ff;
+    }
+
+    .project-item small {
+      color: #667ca8;
+      display: block;
+      margin-top: 3px;
+      line-height: 1.3;
+      font-size: 0.75rem;
+    }
+
+    .status {
+      min-height: 22px;
+      color: #5f6f8c;
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    .status.error {
+      color: var(--err);
+      font-weight: 600;
+    }
+
+    .progress-wrap {
+      display: none;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: #5f6f8c;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #dbe6fa;
+      overflow: hidden;
+      border: 1px solid #c2d2f0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #4a9eff, #2dd4bf);
+      transition: width 0.3s ease;
     }
 
     .live-log {
       margin: 0;
-      background: #0f172a;
-      color: #e2e8f0;
-      border-radius: 8px;
-      padding: 10px;
-      max-height: 180px;
+      max-height: 260px;
       overflow: auto;
-      font-size: 0.8rem;
-      line-height: 1.4;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f3f7ff;
+      border: 1px solid #cad8f1;
+      color: #30466f;
+      font-size: 0.75rem;
+      line-height: 1.6;
       white-space: pre-wrap;
+      font-family: "JetBrains Mono", "Consolas", monospace;
+      font-weight: 450;
     }
 
-    .worklogs {
-      margin-top: 14px;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 12px;
-      max-height: 320px;
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric {
+      border: 1px solid #c6d5f0;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      padding: 18px;
+    }
+
+    .metric .k {
+      color: #5370a5;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+
+    .metric .v {
+      margin-top: 8px;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #20365e;
+    }
+
+    .summary-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-list li {
+      display: flex;
+      justify-content: space-between;
+      border: 1px solid #c9d8f1;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #2a416b;
+      background: linear-gradient(180deg, #ffffff, #eef4ff);
+      font-weight: 500;
+      align-items: center;
+    }
+
+    .summary-list b {
+      color: #213b66;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      border: 1px solid #c7d7f1;
+      border-radius: 8px;
       overflow: auto;
-      font-size: 0.9rem;
+      max-height: 420px;
+      background: #ffffff;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 780px;
     }
 
-    th, td {
-      border-bottom: 1px solid #e8ecf2;
+    th,
+    td {
       text-align: left;
-      padding: 7px 6px;
+      padding: 13px 14px;
+      border-bottom: 1px solid #d6e1f4;
+      font-size: 0.82rem;
       vertical-align: top;
     }
 
     th {
       position: sticky;
       top: 0;
-      background: #f6f8fb;
+      background: #edf3ff;
+      color: #4a6392;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.4px;
+      font-weight: 700;
+      z-index: 1;
     }
 
-    @media (max-width: 760px) {
-      form { grid-template-columns: 1fr; }
-      .project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    tbody tr:hover {
+      background: rgba(74, 158, 255, 0.1);
+    }
+
+    td {
+      color: #2a3f67;
+      font-weight: 500;
+    }
+
+    .empty-state {
+      border: 1px dashed #bfd1ee;
+      border-radius: 8px;
+      padding: 28px 20px;
+      color: #5f7296;
+      text-align: center;
+      font-size: 0.85rem;
+      background: #f4f8ff;
+      line-height: 1.5;
+    }
+
+    .pdf-note {
+      color: #5f7296;
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.35s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1180px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      button {
+        flex: initial;
+        min-width: initial;
+      }
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 16px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .form-grid,
+      .metric-grid,
+      .project-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-row {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="hero">
-      <h1>Jira Worklog Report</h1>
-      <p>Step 1: enter email/token and load profile. Step 2: select projects/date range, fetch worklogs, and export PDF.</p>
-    </div>
-
-    <form id="reportForm">
-      <div class="field">
-        <label for="email">Jira Email</label>
-        <input id="email" type="email" required placeholder="user@company.com" />
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1 class="title">Jira Worklog Intelligence</h1>
+        <p class="subtitle">Step 1: authenticate with Jira. Step 2: select projects/date and generate your report.</p>
+        <div class="owner-name">Muhammad Ameer Hamza</div>
       </div>
+      <div class="badge">AI Operations View</div>
+    </header>
 
-      <div class="field">
-        <label for="token">API Token</label>
-        <input id="token" type="password" required placeholder="Atlassian API token" />
-      </div>
-
-      <div class="field full">
-        <button id="loadBtn" type="button" class="secondary" style="width:220px;">Load Profile & Projects</button>
-      </div>
-
-      <div class="field">
-        <label for="name">Name</label>
-        <input id="name" required placeholder="fahad ibrahim" />
-      </div>
-
-      <div class="field">
-        <label for="accountId">Account ID</label>
-        <input id="accountId" required placeholder="600171919edf280075eceff6" />
-      </div>
-
-      <div class="field full">
-        <label>Projects (select one or more)</label>
-        <div class="project-picker">
-          <div class="project-actions">
-            <input id="selectAllProjects" type="checkbox" checked />
-            <label for="selectAllProjects" style="margin:0;color:#1f2937;">Select All</label>
+    <section id="authPage" class="page active">
+      <div class="auth-shell">
+        <section class="panel">
+          <div class="panel-head"><h2>Authentication</h2></div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field full">
+                <label for="email">Jira Email</label>
+                <input id="email" type="email" placeholder="user@company.com" required />
+              </div>
+              <div class="field full">
+                <label for="token">API Token</label>
+                <input id="token" type="password" placeholder="Atlassian API token" required />
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top:16px;">
+              <button id="loadBtn" type="button" class="btn-primary">Continue to Report</button>
+            </div>
+            <div id="authStatus" class="auth-status">Enter Jira credentials to continue.</div>
           </div>
-          <div class="project-grid" id="projectGrid"></div>
-        </div>
+        </section>
       </div>
+    </section>
 
-      <div class="field">
-        <label for="startDate">Start Date</label>
-        <input id="startDate" type="date" required />
-      </div>
+    <section id="reportPage" class="page">
+    <div class="grid">
+      <aside class="stack">
+        <section class="panel">
+          <div class="panel-head"><h2>Report Input</h2></div>
+          <div class="panel-body">
+            <div class="form-grid">
+              <div class="field">
+                <label for="name">Name</label>
+                <input id="name" placeholder="Ameer Hamza" required />
+              </div>
+              <div class="field">
+                <label for="accountId">Account ID</label>
+                <input id="accountId" placeholder="712020:..." required />
+              </div>
+              <div class="field">
+                <label for="startDate">Start Date</label>
+                <input id="startDate" type="date" required />
+              </div>
+              <div class="field">
+                <label for="endDate">End Date</label>
+                <input id="endDate" type="date" required />
+              </div>
+            </div>
 
-      <div class="field">
-        <label for="endDate">End Date</label>
-        <input id="endDate" type="date" required />
-      </div>
-    </form>
+            <div class="field full" style="margin-top:16px;">
+              <label>Projects</label>
+              <div class="project-picker">
+                <div class="picker-head">
+                  <span id="projectCount">No projects loaded</span>
+                  <label><input id="selectAllProjects" type="checkbox" /> Select all</label>
+                </div>
+                <div class="project-grid" id="projectGrid"></div>
+              </div>
+            </div>
 
-    <div class="actions">
-      <button id="runBtn" type="button" class="primary">Fetch Worklogs</button>
-      <button id="pdfBtn" type="button" class="secondary" disabled>Generate PDF</button>
+            <div class="btn-row" style="margin-top:18px;">
+              <button id="changeAuthBtn" type="button" class="btn-secondary">Change Credentials</button>
+              <button id="runBtn" type="button" class="btn-primary">Fetch Worklogs</button>
+              <button id="pdfBtn" type="button" class="btn-secondary" disabled>Generate PDF</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="stack">
+        <section class="panel fade-in">
+          <div class="panel-head"><h2>Summary</h2></div>
+          <div class="panel-body">
+            <div class="metric-grid" id="metricGrid">
+              <div class="metric"><div class="k">Total Hours</div><div id="metricTotalHours" class="v">0.00h</div></div>
+              <div class="metric"><div class="k">Total Time</div><div id="metricTotalTime" class="v">0h 0m</div></div>
+              <div class="metric"><div class="k">Worklog Items</div><div id="metricItems" class="v">0</div></div>
+            </div>
+            <ul id="projectTotals" class="summary-list" style="margin-top:16px;"></ul>
+            <div id="summaryEmpty" class="empty-state" style="margin-top:16px;">Run a report to see project totals.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><h2>Live Activity</h2></div>
+          <div class="panel-body">
+            <div id="status" class="status">Waiting for credentials.</div>
+            <div id="progressWrap" class="progress-wrap">
+              <div class="progress-meta">
+                <span id="progressLabel">Not started</span>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+            </div>
+            <pre id="liveLog" class="live-log">No logs yet.</pre>
+          </div>
+        </section>
+
+        <section class="panel fade-in">
+          <div class="panel-head"><h2>Worklog Entries</h2></div>
+          <div class="panel-body">
+            <div id="tableEmpty" class="empty-state">No worklog rows yet.</div>
+            <div class="table-wrap" id="tableWrap" style="display:none;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Issue</th>
+                    <th>Project</th>
+                    <th>Started</th>
+                    <th>Time</th>
+                    <th>Comment</th>
+                  </tr>
+                </thead>
+                <tbody id="worklogRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
-
-    <div id="status" class="status"></div>
-
-    <div id="livePanel" class="live-panel">
-      <h3>Live Progress</h3>
-      <pre id="liveLog" class="live-log"></pre>
-    </div>
-
-    <div id="result" class="result">
-      <h2>Summary</h2>
-      <p id="summary"></p>
-      <ul id="projectTotals"></ul>
-
-      <div class="worklogs">
-        <table>
-          <thead>
-            <tr>
-              <th>Issue</th>
-              <th>Project</th>
-              <th>Started</th>
-              <th>Time</th>
-              <th>Comment</th>
-            </tr>
-          </thead>
-          <tbody id="worklogRows"></tbody>
-        </table>
-      </div>
-    </div>
+    </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
     const runBtn = document.getElementById("runBtn");
     const loadBtn = document.getElementById("loadBtn");
+    const changeAuthBtn = document.getElementById("changeAuthBtn");
     const pdfBtn = document.getElementById("pdfBtn");
+    const authPageEl = document.getElementById("authPage");
+    const reportPageEl = document.getElementById("reportPage");
+    const authStatusEl = document.getElementById("authStatus");
     const statusEl = document.getElementById("status");
-    const resultEl = document.getElementById("result");
-    const summaryEl = document.getElementById("summary");
     const projectTotalsEl = document.getElementById("projectTotals");
     const worklogRowsEl = document.getElementById("worklogRows");
+    const tableWrapEl = document.getElementById("tableWrap");
+    const tableEmptyEl = document.getElementById("tableEmpty");
+    const summaryEmptyEl = document.getElementById("summaryEmpty");
     const projectGridEl = document.getElementById("projectGrid");
     const selectAllProjectsEl = document.getElementById("selectAllProjects");
-    const livePanelEl = document.getElementById("livePanel");
+    const projectCountEl = document.getElementById("projectCount");
+    const progressWrapEl = document.getElementById("progressWrap");
+    const progressLabelEl = document.getElementById("progressLabel");
+    const progressPercentEl = document.getElementById("progressPercent");
+    const progressFillEl = document.getElementById("progressFill");
     const liveLogEl = document.getElementById("liveLog");
+    const metricTotalHoursEl = document.getElementById("metricTotalHours");
+    const metricTotalTimeEl = document.getElementById("metricTotalTime");
+    const metricItemsEl = document.getElementById("metricItems");
 
     let availableProjects = [];
-
     let lastReport = null;
     let activeJobId = null;
     let statusTimer = null;
 
-    function setupProjectPicker(projectKeys) {
-      projectGridEl.innerHTML = "";
-      availableProjects = Array.isArray(projectKeys) ? projectKeys : [];
-
-      for (const project of availableProjects) {
-        const key = project.key;
-        const item = document.createElement("label");
-        item.className = "project-item";
-
-        const box = document.createElement("input");
-        box.type = "checkbox";
-        box.value = key;
-        box.checked = true;
-        box.className = "project-checkbox";
-
-        box.addEventListener("change", () => {
-          const selected = getSelectedProjects();
-          selectAllProjectsEl.checked = selected.length === availableProjects.length;
-        });
-
-        const text = document.createElement("span");
-        text.textContent = `${key} - ${project.name || key}`;
-
-        item.appendChild(box);
-        item.appendChild(text);
-        projectGridEl.appendChild(item);
-      }
-
-      selectAllProjectsEl.addEventListener("change", () => {
-        const boxes = document.querySelectorAll(".project-checkbox");
-        for (const box of boxes) {
-          box.checked = selectAllProjectsEl.checked;
-        }
-      });
-
-      selectAllProjectsEl.checked = availableProjects.length > 0;
+    function showReportPage() {
+      authPageEl.classList.remove("active");
+      reportPageEl.classList.add("active");
     }
 
-    function getSelectedProjects() {
-      return Array.from(document.querySelectorAll(".project-checkbox:checked")).map((el) => el.value);
+    function showAuthPage() {
+      reportPageEl.classList.remove("active");
+      authPageEl.classList.add("active");
+    }
+
+    function setAuthStatus(text, isError) {
+      authStatusEl.textContent = text;
+      authStatusEl.className = isError ? "auth-status error" : "auth-status";
     }
 
     function setStatus(text, isError) {
@@ -391,16 +764,92 @@
       return { hours, minutes };
     }
 
-    async function fetchReport(payload) {
-      const resp = await fetch("/api/report", {
+    function formatProjectName(projectKey) {
+      const labels = {
+        CLUS: "Clustox",
+        EV: "Email Verify",
+        IW: "Inbox Warmup",
+        WCI: "WCI",
+        P3: "Project 360",
+        PSD: "PSD",
+        NB: "National Bonds",
+        UA: "Urban Assembly"
+      };
+      return labels[String(projectKey || "").toUpperCase()] || String(projectKey || "");
+    }
+
+    function formatProjectList(projectKeys) {
+      return (Array.isArray(projectKeys) ? projectKeys : []).map(formatProjectName).join(", ");
+    }
+
+    function updateProgress(processed, total, label) {
+      progressWrapEl.style.display = "grid";
+      const safeTotal = Number(total || 0);
+      const safeProcessed = Number(processed || 0);
+      const pct = safeTotal > 0 ? Math.min(100, Math.round((safeProcessed / safeTotal) * 100)) : 0;
+
+      progressLabelEl.textContent = label || "Working...";
+      progressPercentEl.textContent = `${pct}%`;
+      progressFillEl.style.width = `${pct}%`;
+    }
+
+    function setProjectCount() {
+      const selected = getSelectedProjects().length;
+      const total = availableProjects.length;
+      if (total === 0) {
+        projectCountEl.textContent = "No projects loaded";
+      } else {
+        projectCountEl.textContent = `${selected}/${total} selected`;
+      }
+    }
+
+    function setupProjectPicker(projects) {
+      availableProjects = Array.isArray(projects) ? projects : [];
+      projectGridEl.innerHTML = "";
+      selectAllProjectsEl.checked = availableProjects.length > 0;
+
+      for (const project of availableProjects) {
+        const key = project.key;
+        const name = project.name || key;
+
+        const item = document.createElement("label");
+        item.className = "project-item";
+
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.value = key;
+        box.className = "project-checkbox";
+        box.checked = true;
+
+        const textWrap = document.createElement("div");
+        textWrap.innerHTML = `<strong>${key}</strong><small>${name}</small>`;
+
+        box.addEventListener("change", () => {
+          const selected = getSelectedProjects();
+          selectAllProjectsEl.checked = selected.length === availableProjects.length;
+          setProjectCount();
+        });
+
+        item.appendChild(box);
+        item.appendChild(textWrap);
+        projectGridEl.appendChild(item);
+      }
+
+      setProjectCount();
+    }
+
+    function getSelectedProjects() {
+      return Array.from(document.querySelectorAll(".project-checkbox:checked")).map((el) => el.value);
+    }
+
+    async function fetchBootstrap(payload) {
+      const resp = await fetch("/api/bootstrap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || "Failed to generate report");
-      }
+      if (!resp.ok) throw new Error(data.error || "Failed to load profile/projects");
       return data;
     }
 
@@ -411,52 +860,91 @@
         body: JSON.stringify(payload)
       });
       const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || "Failed to start report");
-      }
+      if (!resp.ok) throw new Error(data.error || "Failed to start report");
       return data;
     }
 
     async function fetchReportStatus(jobId) {
       const resp = await fetch(`/api/report/status?jobId=${encodeURIComponent(jobId)}`);
       const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || "Failed to fetch report status");
-      }
+      if (!resp.ok) throw new Error(data.error || "Failed to fetch report status");
       return data;
     }
 
-    function updateLivePanel(logs) {
-      livePanelEl.style.display = "block";
+    function updateLiveLogs(logs) {
       const lines = Array.isArray(logs) ? logs : [];
-      liveLogEl.textContent = lines.slice(-40).join("\n");
+      liveLogEl.textContent = lines.length ? lines.slice(-50).join("\n") : "No logs yet.";
       liveLogEl.scrollTop = liveLogEl.scrollHeight;
+    }
+
+    function renderReport(report) {
+      lastReport = report;
+      pdfBtn.disabled = false;
+
+      const hm = toHoursMinutes(report.totalSeconds || 0);
+      metricTotalHoursEl.textContent = `${Number(report.totalHours || 0).toFixed(2)}h`;
+      metricTotalTimeEl.textContent = `${hm.hours}h ${hm.minutes}m`;
+      metricItemsEl.textContent = `${(report.worklogs || []).length}`;
+
+      projectTotalsEl.innerHTML = "";
+      const entries = Object.entries(report.projectSeconds || {}).sort((a, b) => b[1] - a[1]);
+      if (entries.length === 0) {
+        summaryEmptyEl.style.display = "block";
+      } else {
+        summaryEmptyEl.style.display = "none";
+        for (const [project, seconds] of entries) {
+          const t = toHoursMinutes(seconds);
+          const li = document.createElement("li");
+          li.innerHTML = `<b>${project}</b><span>${t.hours}h ${t.minutes}m</span>`;
+          projectTotalsEl.appendChild(li);
+        }
+      }
+
+      worklogRowsEl.innerHTML = "";
+      const logs = Array.isArray(report.worklogs) ? report.worklogs : [];
+      if (logs.length === 0) {
+        tableWrapEl.style.display = "none";
+        tableEmptyEl.style.display = "block";
+      } else {
+        tableWrapEl.style.display = "block";
+        tableEmptyEl.style.display = "none";
+        for (const log of logs) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${log.issueKey || ""}</td>
+            <td>${log.project || ""}</td>
+            <td>${log.started || ""}</td>
+            <td>${log.timeSpent || ""}</td>
+            <td>${(log.comment || "").replace(/</g, "&lt;")}</td>
+          `;
+          worklogRowsEl.appendChild(tr);
+        }
+      }
     }
 
     async function pollReportStatus() {
       if (!activeJobId) return;
+
       try {
         const status = await fetchReportStatus(activeJobId);
-        const p = status.progress || {};
-        updateLivePanel(status.logs || []);
-        if (p.message) {
-          setStatus(p.message + (p.totalIssues ? ` (${p.processedIssues || 0}/${p.totalIssues})` : ""));
-        }
+        const progress = status.progress || {};
+
+        updateProgress(progress.processedIssues || 0, progress.totalIssues || 0, progress.message || "Working...");
+        updateLiveLogs(status.logs || []);
+        if (progress.message) setStatus(progress.message, false);
 
         if (status.done) {
           clearInterval(statusTimer);
           statusTimer = null;
+          runBtn.disabled = false;
 
           if (status.error) {
             setStatus(status.error, true);
-            runBtn.disabled = false;
             return;
           }
 
-          lastReport = status.result;
-          renderReport(lastReport);
-          setStatus("Report generated.");
-          runBtn.disabled = false;
+          renderReport(status.result || {});
+          setStatus("Report completed successfully.", false);
         }
       } catch (err) {
         clearInterval(statusTimer);
@@ -466,128 +954,148 @@
       }
     }
 
-    async function fetchBootstrap(payload) {
-      const resp = await fetch("/api/bootstrap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        throw new Error(data.error || "Failed to load profile and projects");
-      }
-      return data;
-    }
-
-    function renderReport(report) {
-      const t = toHoursMinutes(report.totalSeconds);
-      summaryEl.textContent = "Total worked time: " + t.hours + "h " + t.minutes + "m";
-
-      projectTotalsEl.innerHTML = "";
-      for (const [project, seconds] of Object.entries(report.projectSeconds)) {
-        const p = toHoursMinutes(seconds);
-        const li = document.createElement("li");
-        li.textContent = project + ": " + p.hours + "h " + p.minutes + "m";
-        projectTotalsEl.appendChild(li);
-      }
-
-      worklogRowsEl.innerHTML = "";
-      const logs = Array.isArray(report.worklogs) ? report.worklogs : [];
-      for (const log of logs) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = "<td>" + (log.issueKey || "") + "</td>" +
-          "<td>" + (log.project || "") + "</td>" +
-          "<td>" + (log.started || "") + "</td>" +
-          "<td>" + (log.timeSpent || "") + "</td>" +
-          "<td>" + (log.comment || "") + "</td>";
-        worklogRowsEl.appendChild(tr);
-      }
-
-      resultEl.style.display = "block";
-      pdfBtn.disabled = false;
-    }
-
     function generatePdf(report) {
       const jsPDF = window.jspdf.jsPDF;
       const doc = new jsPDF();
       let y = 16;
 
-      doc.setFontSize(15);
-      doc.text("Jira Worklog Report", 12, y);
-      y += 8;
+      const marginLeft = 14;
+      const contentWidth = 182;
 
-      doc.setFontSize(10);
-      doc.text("Name: " + report.name, 12, y); y += 6;
-      doc.text("Account ID: " + report.accountId, 12, y); y += 6;
-      doc.text("Projects: " + report.projects.join(", "), 12, y); y += 6;
-      doc.text("Date Range: " + report.startDate + " to " + report.endDate, 12, y); y += 8;
+      doc.setFillColor(26, 26, 35);
+      doc.rect(0, 0, 210, 22, "F");
+      doc.setTextColor(240, 240, 248);
+      doc.setFontSize(17);
+      doc.setFont("helvetica", "bold");
+      doc.text("Jira Worklog Report", marginLeft, 14);
 
-      const total = toHoursMinutes(report.totalSeconds);
+      doc.setTextColor(26, 26, 31);
+      doc.setFont("helvetica", "normal");
+      y = 32;
+
+      doc.setDrawColor(208, 212, 224);
+      doc.setLineWidth(0.2);
+
+      const infoLines = [
+        ["Name", report.name || ""],
+        ["Account ID", report.accountId || ""],
+        ["Projects", formatProjectList(report.projects || [])],
+        ["Date Range", `${report.startDate || ""} to ${report.endDate || ""}`]
+      ];
+
+      for (const [label, value] of infoLines) {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${label}:`, marginLeft, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(String(value || ""), marginLeft + 32, y);
+        y += 7;
+      }
+
+      y += 2;
+
+      const total = toHoursMinutes(report.totalSeconds || 0);
+      doc.setFillColor(236, 236, 244);
+      doc.roundedRect(marginLeft, y - 4, 70, 16, 3, 3, "F");
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
-      doc.text("Total: " + total.hours + "h " + total.minutes + "m", 12, y);
-      y += 8;
+      doc.text(`Total Hours: ${total.hours}h ${total.minutes}m`, marginLeft + 4, y + 6);
+
+      y += 16;
 
       doc.setFontSize(10);
-      doc.text("Project Totals:", 12, y); y += 6;
-      for (const [project, seconds] of Object.entries(report.projectSeconds)) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Project Totals", marginLeft, y);
+      y += 6;
+
+      for (const [project, seconds] of Object.entries(report.projectSeconds || {})) {
         const t = toHoursMinutes(seconds);
-        doc.text("- " + project + ": " + t.hours + "h " + t.minutes + "m", 14, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(`• ${project}: ${t.hours}h ${t.minutes}m`, marginLeft + 2, y);
         y += 6;
         if (y > 275) { doc.addPage(); y = 16; }
       }
 
       y += 3;
-      doc.text("Worklogs:", 12, y); y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text("Worklogs", marginLeft, y); y += 7;
 
       for (const log of report.worklogs || []) {
-        const line = [
-          log.issueKey || "",
-          log.project || "",
-          log.started || "",
-          log.timeSpent || ""
-        ].join(" | ");
-
-        const wrapped = doc.splitTextToSize(line, 182);
-        doc.text(wrapped, 12, y);
+        const line = [log.issueKey || "", log.project || "", log.started || "", log.timeSpent || ""].join(" | ");
+        const wrapped = doc.splitTextToSize(line, contentWidth);
+        doc.setFont("helvetica", "bold");
+        doc.text(wrapped, marginLeft, y);
         y += wrapped.length * 5;
-
         if (log.comment) {
-          const c = doc.splitTextToSize("comment: " + log.comment, 178);
-          doc.text(c, 14, y);
+          doc.setFont("helvetica", "normal");
+          const c = doc.splitTextToSize("Comment: " + log.comment, contentWidth - 4);
+          doc.text(c, marginLeft + 2, y);
           y += c.length * 5;
         }
-
         y += 2;
         if (y > 275) { doc.addPage(); y = 16; }
       }
 
-      const fileName = "jira-worklogs-" + report.startDate + "-to-" + report.endDate + ".pdf";
-      doc.save(fileName);
+      doc.save("jira-worklogs-" + report.startDate + "-to-" + report.endDate + ".pdf");
     }
 
+    selectAllProjectsEl.addEventListener("change", () => {
+      const boxes = document.querySelectorAll(".project-checkbox");
+      for (const box of boxes) box.checked = selectAllProjectsEl.checked;
+      setProjectCount();
+    });
+
+    loadBtn.addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const token = document.getElementById("token").value.trim();
+
+      if (!email || !token) {
+        setAuthStatus("Enter email and token first.", true);
+        return;
+      }
+
+      loadBtn.disabled = true;
+      setAuthStatus("Loading profile and projects...");
+      progressWrapEl.style.display = "none";
+      updateLiveLogs(["Connecting to Jira API..."]);
+
+      try {
+        const data = await fetchBootstrap({ email, token });
+        document.getElementById("name").value = data.user.displayName || "";
+        document.getElementById("accountId").value = data.user.accountId || "";
+        setupProjectPicker(Array.isArray(data.projects) ? data.projects : []);
+        setAuthStatus("Authentication successful. Opening report page...", false);
+        showReportPage();
+        setStatus("Profile loaded. Select projects and run report.", false);
+      } catch (err) {
+        setAuthStatus(err.message || "Failed to load profile/projects", true);
+      } finally {
+        loadBtn.disabled = false;
+      }
+    });
+
+    changeAuthBtn.addEventListener("click", () => {
+      showAuthPage();
+      setAuthStatus("Update Jira credentials and continue.", false);
+    });
+
     runBtn.addEventListener("click", async () => {
-      const selectedProjects = getSelectedProjects();
       const payload = {
         email: document.getElementById("email").value.trim(),
         token: document.getElementById("token").value.trim(),
         name: document.getElementById("name").value.trim(),
         accountId: document.getElementById("accountId").value.trim(),
-        projects: selectedProjects,
+        projects: getSelectedProjects(),
         startDate: document.getElementById("startDate").value.trim(),
         endDate: document.getElementById("endDate").value.trim()
       };
 
       if (!payload.email || !payload.token || !payload.name || !payload.accountId || !payload.startDate || !payload.endDate) {
-        setStatus("Please fill all fields.", true);
+        setStatus("Complete all input fields.", true);
         return;
       }
 
-      if (availableProjects.length === 0) {
-        setStatus("Load profile and projects first.", true);
-        return;
-      }
-
-      if (selectedProjects.length === 0) {
+      if (!payload.projects.length) {
         setStatus("Select at least one project.", true);
         return;
       }
@@ -599,67 +1107,34 @@
 
       runBtn.disabled = true;
       pdfBtn.disabled = true;
-      resultEl.style.display = "none";
-      livePanelEl.style.display = "block";
-      liveLogEl.textContent = "";
-      setStatus("Starting report job...");
+      progressWrapEl.style.display = "grid";
+      updateProgress(0, 0, "Starting report job...");
+      updateLiveLogs(["Report queued..."]);
+      setStatus("Preparing report...", false);
 
       try {
         const started = await startReportJob(payload);
         activeJobId = started.jobId;
-
-        if (statusTimer) {
-          clearInterval(statusTimer);
-        }
-
+        if (statusTimer) clearInterval(statusTimer);
         await pollReportStatus();
         statusTimer = setInterval(pollReportStatus, 1200);
       } catch (err) {
-        setStatus(err.message || "Failed to generate report", true);
         runBtn.disabled = false;
+        setStatus(err.message || "Failed to start report", true);
       }
     });
 
     pdfBtn.addEventListener("click", () => {
       if (!lastReport) {
-        setStatus("Generate report first.", true);
+        setStatus("Run report before exporting PDF.", true);
         return;
       }
       generatePdf(lastReport);
-      setStatus("PDF generated.");
-    });
-
-    loadBtn.addEventListener("click", async () => {
-      const email = document.getElementById("email").value.trim();
-      const token = document.getElementById("token").value.trim();
-
-      if (!email || !token) {
-        setStatus("Enter email and token first.", true);
-        return;
-      }
-
-      loadBtn.disabled = true;
-      runBtn.disabled = true;
-      setStatus("Loading account profile and accessible projects...");
-
-      try {
-        const data = await fetchBootstrap({ email, token });
-        document.getElementById("name").value = data.user.displayName || "";
-        document.getElementById("accountId").value = data.user.accountId || "";
-
-        const projects = Array.isArray(data.projects) ? data.projects : [];
-        setupProjectPicker(projects);
-
-        setStatus("Profile and projects loaded. You can now fetch worklogs.");
-      } catch (err) {
-        setStatus(err.message || "Failed to load profile/projects", true);
-      } finally {
-        loadBtn.disabled = false;
-        runBtn.disabled = false;
-      }
+      setStatus("PDF generated.", false);
     });
 
     setupProjectPicker([]);
+    showAuthPage();
   </script>
 </body>
 </html>
