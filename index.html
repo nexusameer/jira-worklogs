@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Worklog PDF Report</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #5b6474;
+      --accent: #0c7a6a;
+      --accent-2: #095f52;
+      --border: #d6dde6;
+      --danger: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 0%, #fff6ea 0%, var(--bg) 44%, #edf8f7 100%);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero {
+      background: linear-gradient(120deg, #0c7a6a, #094d57);
+      color: #fff;
+      padding: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+    }
+
+    .hero p {
+      margin: 0;
+      opacity: 0.92;
+      line-height: 1.4;
+    }
+
+    form {
+      padding: 20px 22px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input {
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0 11px;
+      font-size: 0.94rem;
+    }
+
+    .project-picker {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fbfcff;
+    }
+
+    .project-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #e8ecf2;
+      font-size: 0.9rem;
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .project-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: #1f2937;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      outline: 2px solid rgba(12, 122, 106, 0.15);
+    }
+
+    .actions {
+      padding: 0 22px 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary { background: var(--accent); color: #fff; }
+    .primary:hover { background: var(--accent-2); }
+    .secondary { background: #e7ebf0; color: #111827; }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin: 0 22px 16px;
+      color: var(--muted);
+      min-height: 18px;
+      font-size: 0.92rem;
+    }
+
+    .status.error {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .result {
+      margin: 0 22px 22px;
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: #fafbfd;
+      display: none;
+    }
+
+    .result h2 { margin: 0 0 10px; }
+    .result ul { margin: 8px 0 0; padding-left: 20px; }
+    .result li { margin-bottom: 4px; }
+
+    .live-panel {
+      margin: 0 22px 14px;
+      border: 1px solid var(--border);
+      background: #fbfcff;
+      border-radius: 12px;
+      padding: 10px;
+      display: none;
+    }
+
+    .live-panel h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      color: #1f2937;
+    }
+
+    .live-log {
+      margin: 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 180px;
+      overflow: auto;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .worklogs {
+      margin-top: 14px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 12px;
+      max-height: 320px;
+      overflow: auto;
+      font-size: 0.9rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e8ecf2;
+      text-align: left;
+      padding: 7px 6px;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f6f8fb;
+    }
+
+    @media (max-width: 760px) {
+      form { grid-template-columns: 1fr; }
+      .project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>Jira Worklog Report</h1>
+      <p>Step 1: enter email/token and load profile. Step 2: select projects/date range, fetch worklogs, and export PDF.</p>
+    </div>
+
+    <form id="reportForm">
+      <div class="field">
+        <label for="email">Jira Email</label>
+        <input id="email" type="email" required placeholder="user@company.com" />
+      </div>
+
+      <div class="field">
+        <label for="token">API Token</label>
+        <input id="token" type="password" required placeholder="Atlassian API token" />
+      </div>
+
+      <div class="field full">
+        <button id="loadBtn" type="button" class="secondary" style="width:220px;">Load Profile & Projects</button>
+      </div>
+
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" required placeholder="fahad ibrahim" />
+      </div>
+
+      <div class="field">
+        <label for="accountId">Account ID</label>
+        <input id="accountId" required placeholder="600171919edf280075eceff6" />
+      </div>
+
+      <div class="field full">
+        <label>Projects (select one or more)</label>
+        <div class="project-picker">
+          <div class="project-actions">
+            <input id="selectAllProjects" type="checkbox" checked />
+            <label for="selectAllProjects" style="margin:0;color:#1f2937;">Select All</label>
+          </div>
+          <div class="project-grid" id="projectGrid"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="startDate">Start Date</label>
+        <input id="startDate" type="date" required />
+      </div>
+
+      <div class="field">
+        <label for="endDate">End Date</label>
+        <input id="endDate" type="date" required />
+      </div>
+    </form>
+
+    <div class="actions">
+      <button id="runBtn" type="button" class="primary">Fetch Worklogs</button>
+      <button id="pdfBtn" type="button" class="secondary" disabled>Generate PDF</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="livePanel" class="live-panel">
+      <h3>Live Progress</h3>
+      <pre id="liveLog" class="live-log"></pre>
+    </div>
+
+    <div id="result" class="result">
+      <h2>Summary</h2>
+      <p id="summary"></p>
+      <ul id="projectTotals"></ul>
+
+      <div class="worklogs">
+        <table>
+          <thead>
+            <tr>
+              <th>Issue</th>
+              <th>Project</th>
+              <th>Started</th>
+              <th>Time</th>
+              <th>Comment</th>
+            </tr>
+          </thead>
+          <tbody id="worklogRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    const runBtn = document.getElementById("runBtn");
+    const loadBtn = document.getElementById("loadBtn");
+    const pdfBtn = document.getElementById("pdfBtn");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const summaryEl = document.getElementById("summary");
+    const projectTotalsEl = document.getElementById("projectTotals");
+    const worklogRowsEl = document.getElementById("worklogRows");
+    const projectGridEl = document.getElementById("projectGrid");
+    const selectAllProjectsEl = document.getElementById("selectAllProjects");
+    const livePanelEl = document.getElementById("livePanel");
+    const liveLogEl = document.getElementById("liveLog");
+
+    let availableProjects = [];
+
+    let lastReport = null;
+    let activeJobId = null;
+    let statusTimer = null;
+
+    function setupProjectPicker(projectKeys) {
+      projectGridEl.innerHTML = "";
+      availableProjects = Array.isArray(projectKeys) ? projectKeys : [];
+
+      for (const project of availableProjects) {
+        const key = project.key;
+        const item = document.createElement("label");
+        item.className = "project-item";
+
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.value = key;
+        box.checked = true;
+        box.className = "project-checkbox";
+
+        box.addEventListener("change", () => {
+          const selected = getSelectedProjects();
+          selectAllProjectsEl.checked = selected.length === availableProjects.length;
+        });
+
+        const text = document.createElement("span");
+        text.textContent = `${key} - ${project.name || key}`;
+
+        item.appendChild(box);
+        item.appendChild(text);
+        projectGridEl.appendChild(item);
+      }
+
+      selectAllProjectsEl.addEventListener("change", () => {
+        const boxes = document.querySelectorAll(".project-checkbox");
+        for (const box of boxes) {
+          box.checked = selectAllProjectsEl.checked;
+        }
+      });
+
+      selectAllProjectsEl.checked = availableProjects.length > 0;
+    }
+
+    function getSelectedProjects() {
+      return Array.from(document.querySelectorAll(".project-checkbox:checked")).map((el) => el.value);
+    }
+
+    function setStatus(text, isError) {
+      statusEl.textContent = text;
+      statusEl.className = isError ? "status error" : "status";
+    }
+
+    function toHoursMinutes(totalSeconds) {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      return { hours, minutes };
+    }
+
+    async function fetchReport(payload) {
+      const resp = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "Failed to generate report");
+      }
+      return data;
+    }
+
+    async function startReportJob(payload) {
+      const resp = await fetch("/api/report/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "Failed to start report");
+      }
+      return data;
+    }
+
+    async function fetchReportStatus(jobId) {
+      const resp = await fetch(`/api/report/status?jobId=${encodeURIComponent(jobId)}`);
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "Failed to fetch report status");
+      }
+      return data;
+    }
+
+    function updateLivePanel(logs) {
+      livePanelEl.style.display = "block";
+      const lines = Array.isArray(logs) ? logs : [];
+      liveLogEl.textContent = lines.slice(-40).join("\n");
+      liveLogEl.scrollTop = liveLogEl.scrollHeight;
+    }
+
+    async function pollReportStatus() {
+      if (!activeJobId) return;
+      try {
+        const status = await fetchReportStatus(activeJobId);
+        const p = status.progress || {};
+        updateLivePanel(status.logs || []);
+        if (p.message) {
+          setStatus(p.message + (p.totalIssues ? ` (${p.processedIssues || 0}/${p.totalIssues})` : ""));
+        }
+
+        if (status.done) {
+          clearInterval(statusTimer);
+          statusTimer = null;
+
+          if (status.error) {
+            setStatus(status.error, true);
+            runBtn.disabled = false;
+            return;
+          }
+
+          lastReport = status.result;
+          renderReport(lastReport);
+          setStatus("Report generated.");
+          runBtn.disabled = false;
+        }
+      } catch (err) {
+        clearInterval(statusTimer);
+        statusTimer = null;
+        runBtn.disabled = false;
+        setStatus(err.message || "Failed to fetch report status", true);
+      }
+    }
+
+    async function fetchBootstrap(payload) {
+      const resp = await fetch("/api/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "Failed to load profile and projects");
+      }
+      return data;
+    }
+
+    function renderReport(report) {
+      const t = toHoursMinutes(report.totalSeconds);
+      summaryEl.textContent = "Total worked time: " + t.hours + "h " + t.minutes + "m";
+
+      projectTotalsEl.innerHTML = "";
+      for (const [project, seconds] of Object.entries(report.projectSeconds)) {
+        const p = toHoursMinutes(seconds);
+        const li = document.createElement("li");
+        li.textContent = project + ": " + p.hours + "h " + p.minutes + "m";
+        projectTotalsEl.appendChild(li);
+      }
+
+      worklogRowsEl.innerHTML = "";
+      const logs = Array.isArray(report.worklogs) ? report.worklogs : [];
+      for (const log of logs) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + (log.issueKey || "") + "</td>" +
+          "<td>" + (log.project || "") + "</td>" +
+          "<td>" + (log.started || "") + "</td>" +
+          "<td>" + (log.timeSpent || "") + "</td>" +
+          "<td>" + (log.comment || "") + "</td>";
+        worklogRowsEl.appendChild(tr);
+      }
+
+      resultEl.style.display = "block";
+      pdfBtn.disabled = false;
+    }
+
+    function generatePdf(report) {
+      const jsPDF = window.jspdf.jsPDF;
+      const doc = new jsPDF();
+      let y = 16;
+
+      doc.setFontSize(15);
+      doc.text("Jira Worklog Report", 12, y);
+      y += 8;
+
+      doc.setFontSize(10);
+      doc.text("Name: " + report.name, 12, y); y += 6;
+      doc.text("Account ID: " + report.accountId, 12, y); y += 6;
+      doc.text("Projects: " + report.projects.join(", "), 12, y); y += 6;
+      doc.text("Date Range: " + report.startDate + " to " + report.endDate, 12, y); y += 8;
+
+      const total = toHoursMinutes(report.totalSeconds);
+      doc.setFontSize(11);
+      doc.text("Total: " + total.hours + "h " + total.minutes + "m", 12, y);
+      y += 8;
+
+      doc.setFontSize(10);
+      doc.text("Project Totals:", 12, y); y += 6;
+      for (const [project, seconds] of Object.entries(report.projectSeconds)) {
+        const t = toHoursMinutes(seconds);
+        doc.text("- " + project + ": " + t.hours + "h " + t.minutes + "m", 14, y);
+        y += 6;
+        if (y > 275) { doc.addPage(); y = 16; }
+      }
+
+      y += 3;
+      doc.text("Worklogs:", 12, y); y += 6;
+
+      for (const log of report.worklogs || []) {
+        const line = [
+          log.issueKey || "",
+          log.project || "",
+          log.started || "",
+          log.timeSpent || ""
+        ].join(" | ");
+
+        const wrapped = doc.splitTextToSize(line, 182);
+        doc.text(wrapped, 12, y);
+        y += wrapped.length * 5;
+
+        if (log.comment) {
+          const c = doc.splitTextToSize("comment: " + log.comment, 178);
+          doc.text(c, 14, y);
+          y += c.length * 5;
+        }
+
+        y += 2;
+        if (y > 275) { doc.addPage(); y = 16; }
+      }
+
+      const fileName = "jira-worklogs-" + report.startDate + "-to-" + report.endDate + ".pdf";
+      doc.save(fileName);
+    }
+
+    runBtn.addEventListener("click", async () => {
+      const selectedProjects = getSelectedProjects();
+      const payload = {
+        email: document.getElementById("email").value.trim(),
+        token: document.getElementById("token").value.trim(),
+        name: document.getElementById("name").value.trim(),
+        accountId: document.getElementById("accountId").value.trim(),
+        projects: selectedProjects,
+        startDate: document.getElementById("startDate").value.trim(),
+        endDate: document.getElementById("endDate").value.trim()
+      };
+
+      if (!payload.email || !payload.token || !payload.name || !payload.accountId || !payload.startDate || !payload.endDate) {
+        setStatus("Please fill all fields.", true);
+        return;
+      }
+
+      if (availableProjects.length === 0) {
+        setStatus("Load profile and projects first.", true);
+        return;
+      }
+
+      if (selectedProjects.length === 0) {
+        setStatus("Select at least one project.", true);
+        return;
+      }
+
+      if (payload.startDate > payload.endDate) {
+        setStatus("Start date must be before or equal to end date.", true);
+        return;
+      }
+
+      runBtn.disabled = true;
+      pdfBtn.disabled = true;
+      resultEl.style.display = "none";
+      livePanelEl.style.display = "block";
+      liveLogEl.textContent = "";
+      setStatus("Starting report job...");
+
+      try {
+        const started = await startReportJob(payload);
+        activeJobId = started.jobId;
+
+        if (statusTimer) {
+          clearInterval(statusTimer);
+        }
+
+        await pollReportStatus();
+        statusTimer = setInterval(pollReportStatus, 1200);
+      } catch (err) {
+        setStatus(err.message || "Failed to generate report", true);
+        runBtn.disabled = false;
+      }
+    });
+
+    pdfBtn.addEventListener("click", () => {
+      if (!lastReport) {
+        setStatus("Generate report first.", true);
+        return;
+      }
+      generatePdf(lastReport);
+      setStatus("PDF generated.");
+    });
+
+    loadBtn.addEventListener("click", async () => {
+      const email = document.getElementById("email").value.trim();
+      const token = document.getElementById("token").value.trim();
+
+      if (!email || !token) {
+        setStatus("Enter email and token first.", true);
+        return;
+      }
+
+      loadBtn.disabled = true;
+      runBtn.disabled = true;
+      setStatus("Loading account profile and accessible projects...");
+
+      try {
+        const data = await fetchBootstrap({ email, token });
+        document.getElementById("name").value = data.user.displayName || "";
+        document.getElementById("accountId").value = data.user.accountId || "";
+
+        const projects = Array.isArray(data.projects) ? data.projects : [];
+        setupProjectPicker(projects);
+
+        setStatus("Profile and projects loaded. You can now fetch worklogs.");
+      } catch (err) {
+        setStatus(err.message || "Failed to load profile/projects", true);
+      } finally {
+        loadBtn.disabled = false;
+        runBtn.disabled = false;
+      }
+    });
+
+    setupProjectPicker([]);
+  </script>
+</body>
+</html>
