@@ -3,6 +3,24 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 
+function loadDotEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const idx = trimmed.indexOf("=");
+    if (idx <= 0) continue;
+    const key = trimmed.slice(0, idx).trim();
+    const val = trimmed.slice(idx + 1).trim();
+    if (!(key in process.env)) {
+      process.env[key] = val;
+    }
+  }
+}
+
+loadDotEnv(path.join(__dirname, ".env"));
+
 const PORT = Number(process.env.PORT || 8080);
 const JIRA_DOMAIN = process.env.JIRA_DOMAIN || "clustox.atlassian.net";
 const JIRA_TIMEOUT_MS = Number(process.env.JIRA_TIMEOUT_MS || 90000);
