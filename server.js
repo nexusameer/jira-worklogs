@@ -215,10 +215,15 @@ function normalizeProjectKeys(projectsInput) {
   return unique.length ? unique : DEFAULT_PROJECTS;
 }
 
-function emptyProjectSeconds(projectKeys) {
+function resolveProjectLabel(projectKey, projectNameByKey) {
+  const key = String(projectKey || "").trim().toUpperCase();
+  return projectNameByKey.get(key) || PROJECT_LABELS[key] || key;
+}
+
+function emptyProjectSeconds(projectKeys, projectNameByKey) {
   const totals = {};
   for (const key of projectKeys) {
-    const label = PROJECT_LABELS[key] || key;
+    const label = resolveProjectLabel(key, projectNameByKey);
     totals[label] = 0;
   }
   return totals;
@@ -386,7 +391,12 @@ async function buildReport(payload, onProgress) {
     throw new Error("Invalid date range");
   }
 
-  const projectSeconds = emptyProjectSeconds(projectKeys);
+  const accessibleProjects = await fetchAccessibleProjects(authHeader);
+  const projectNameByKey = new Map(
+    accessibleProjects.map((project) => [String(project.key || "").trim().toUpperCase(), String(project.name || project.key || "")])
+  );
+
+  const projectSeconds = emptyProjectSeconds(projectKeys, projectNameByKey);
   const matchedWorklogs = [];
 
   onProgress({ phase: "start", message: "Starting report generation", currentProject: null });
@@ -401,7 +411,7 @@ async function buildReport(payload, onProgress) {
     });
 
     const issueKeys = await fetchProjectIssueKeys(authHeader, projectKey);
-    const projectLabel = PROJECT_LABELS[projectKey] || projectKey;
+    const projectLabel = resolveProjectLabel(projectKey, projectNameByKey);
     let processedIssues = 0;
 
     onProgress({
