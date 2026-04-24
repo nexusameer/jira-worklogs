@@ -29,14 +29,15 @@ const ISSUE_CONCURRENCY = Math.max(1, Number(process.env.ISSUE_CONCURRENCY || 4)
 const REPORT_JOBS = new Map();
 
 const PROJECT_LABELS = {
-  CLUS: "clustox",
-  EV: "emailverify",
-  IW: "inboxwarmup",
-  WCI: "wci",
-  P3: "project 360",
-  PSD: "psd",
-  NB: "national bonds",
-  UA: "urban assembly"
+  CLUS: "Clustox",
+  EV: "Email Verify",
+  IW: "Inbox Warmup",
+  WCI: "Wheel Chair Intake",
+  P3: "Project 360",
+  PSD: "Pre-Sales",
+  NB: "National Bonds",
+  SUP: "Support",
+  UA: "Urban Assembly"
 };
 
 function sleep(ms) {
@@ -217,7 +218,7 @@ function normalizeProjectKeys(projectsInput) {
 function emptyProjectSeconds(projectKeys) {
   const totals = {};
   for (const key of projectKeys) {
-    const label = PROJECT_LABELS[key] || key.toLowerCase();
+    const label = PROJECT_LABELS[key] || key;
     totals[label] = 0;
   }
   return totals;
@@ -400,7 +401,7 @@ async function buildReport(payload, onProgress) {
     });
 
     const issueKeys = await fetchProjectIssueKeys(authHeader, projectKey);
-    const projectLabel = PROJECT_LABELS[projectKey] || projectKey.toLowerCase();
+    const projectLabel = PROJECT_LABELS[projectKey] || projectKey;
     let processedIssues = 0;
 
     onProgress({

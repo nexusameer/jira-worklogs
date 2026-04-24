@@ -804,10 +804,11 @@
         CLUS: "Clustox",
         EV: "Email Verify",
         IW: "Inbox Warmup",
-        WCI: "WCI",
-        P3: "Project 360",
-        PSD: "PSD",
+        WCI: "Wheel Chair Intake",
+        P3: "Project360",
+        PSD: "Pre-Sales",
         NB: "National Bonds",
+        SUP: "Support",
         UA: "Urban Assembly"
       };
       return labels[String(projectKey || "").toUpperCase()] || String(projectKey || "");
@@ -992,86 +993,254 @@
     function generatePdf(report) {
       const jsPDF = window.jspdf.jsPDF;
       const doc = new jsPDF();
-      let y = 16;
+      const workedProjects = Object.entries(report.projectSeconds || {})
+        .filter(([, seconds]) => Number(seconds) > 0)
+        .sort((a, b) => b[1] - a[1]);
+      const logs = Array.isArray(report.worklogs) ? report.worklogs : [];
+      const total = toHoursMinutes(report.totalSeconds || 0);
+      const colors = {
+        pageBg: [238, 244, 250],
+        sidebar: [5, 58, 87],
+        sidebarDeep: [3, 45, 68],
+        topbar: [9, 89, 126],
+        cardBg: [255, 255, 255],
+        cardSoft: [243, 248, 253],
+        text: [30, 43, 64],
+        muted: [96, 112, 136],
+        line: [221, 230, 241],
+        accent: [145, 220, 75],
+        accentDark: [86, 143, 30],
+        chipBlue: [222, 239, 255],
+        chipBlueText: [33, 94, 154],
+        chipMint: [218, 246, 228],
+        chipMintText: [26, 128, 84],
+        chipAmber: [255, 245, 212],
+        chipAmberText: [160, 108, 24],
+        chipRose: [255, 229, 229],
+        chipRoseText: [167, 58, 58]
+      };
 
-      const marginLeft = 14;
-      const contentWidth = 182;
+      const pageW = 210;
+      const pageH = 297;
+      const sidebarW = 0;
+      const contentX = 10;
+      const contentY = 26;
+      const contentW = 190;
+      const contentH = 261;
+      const innerX = contentX + 6;
+      const innerW = contentW - 12;
+      const bottomLimit = pageH - 12;
+      let y = 0;
+      let pageNo = 1;
 
-      doc.setFillColor(26, 26, 35);
-      doc.rect(0, 0, 210, 22, "F");
-      doc.setTextColor(240, 240, 248);
-      doc.setFontSize(17);
-      doc.setFont("helvetica", "bold");
-      doc.text("Jira Worklog Report", marginLeft, 14);
-
-      doc.setTextColor(26, 26, 31);
-      doc.setFont("helvetica", "normal");
-      y = 32;
-
-      doc.setDrawColor(208, 212, 224);
-      doc.setLineWidth(0.2);
-
-      const infoLines = [
-        ["Name", report.name || ""],
-        ["Account ID", report.accountId || ""],
-        ["Projects", formatProjectList(report.projects || [])],
-        ["Date Range", `${report.startDate || ""} to ${report.endDate || ""}`]
-      ];
-
-      for (const [label, value] of infoLines) {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${label}:`, marginLeft, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(String(value || ""), marginLeft + 32, y);
-        y += 7;
+      function formatDateLabel(value) {
+        const d = new Date(String(value || ""));
+        if (Number.isNaN(d.getTime())) return String(value || "-");
+        return d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        });
       }
 
-      y += 2;
+      function drawChip(x, yPos, text, bg, fg) {
+        const width = Math.max(20, Math.min(62, doc.getTextWidth(text) + 8));
+        doc.setFillColor(bg[0], bg[1], bg[2]);
+        doc.roundedRect(x, yPos - 4.2, width, 7.5, 2.3, 2.3, "F");
+        doc.setTextColor(fg[0], fg[1], fg[2]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.4);
+        doc.text(text, x + 4, yPos + 1);
+        return width;
+      }
 
-      const total = toHoursMinutes(report.totalSeconds || 0);
-      doc.setFillColor(236, 236, 244);
-      doc.roundedRect(marginLeft, y - 4, 70, 16, 3, 3, "F");
+      function drawFrame() {
+        doc.setFillColor(colors.pageBg[0], colors.pageBg[1], colors.pageBg[2]);
+        doc.rect(0, 0, pageW, pageH, "F");
+
+        doc.setFillColor(colors.topbar[0], colors.topbar[1], colors.topbar[2]);
+        doc.rect(0, 0, pageW, 18, "F");
+
+        doc.setFillColor(colors.cardBg[0], colors.cardBg[1], colors.cardBg[2]);
+        doc.roundedRect(contentX, contentY, contentW, contentH, 7, 7, "F");
+        doc.setDrawColor(colors.line[0], colors.line[1], colors.line[2]);
+        doc.setLineWidth(0.35);
+        doc.roundedRect(contentX, contentY, contentW, contentH, 7, 7, "S");
+
+        doc.setTextColor(230, 242, 251);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text("Clustox Worklogs", sidebarW + 4, 11.5);
+
+        doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("Worklogs Report", innerX, contentY + 14);
+
+        doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        const subtitle = `${report.name || "User"}  •  ${report.startDate || ""} to ${report.endDate || ""}`;
+        doc.text(subtitle, innerX, contentY + 21);
+
+        doc.setFillColor(colors.cardSoft[0], colors.cardSoft[1], colors.cardSoft[2]);
+        doc.roundedRect(innerX, contentY + 26, innerW, 18, 3.5, 3.5, "F");
+        doc.setDrawColor(222, 232, 245);
+        doc.roundedRect(innerX, contentY + 26, innerW, 18, 3.5, 3.5, "S");
+
+        const cards = [
+          { label: "Total Time", value: `${total.hours}h ${total.minutes}m` },
+          { label: "Worked Projects", value: String(workedProjects.length) },
+          { label: "Worklog Entries", value: String(logs.length) }
+        ];
+        const cardW = (innerW - 8) / 3;
+        let cx = innerX + 2;
+
+        for (const card of cards) {
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(cx, contentY + 28, cardW, 14, 2.6, 2.6, "F");
+          doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7.6);
+          doc.text(card.label.toUpperCase(), cx + 2.5, contentY + 32.5);
+          doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+          doc.setFontSize(10.2);
+          doc.text(card.value, cx + 2.5, contentY + 38.7);
+          cx += cardW + 2;
+        }
+
+        y = contentY + 52;
+      }
+
+      function ensureSpace(height, withTableHeader) {
+        if (y + height <= bottomLimit) return;
+        doc.addPage();
+        pageNo += 1;
+        drawFrame();
+        if (withTableHeader) {
+          drawTableHeader();
+        }
+      }
+
+      function drawTableHeader() {
+        doc.setFillColor(244, 248, 253);
+        doc.roundedRect(innerX, y, innerW, 8.5, 1.8, 1.8, "F");
+        doc.setDrawColor(colors.line[0], colors.line[1], colors.line[2]);
+        doc.roundedRect(innerX, y, innerW, 8.5, 1.8, 1.8, "S");
+
+        doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.2);
+        doc.text("Issue", innerX + 2, y + 5.7);
+        doc.text("Project", innerX + 28, y + 5.7);
+        doc.text("Date", innerX + 73, y + 5.7);
+        doc.text("Spent", innerX + 98, y + 5.7);
+        doc.text("Comment", innerX + 118, y + 5.7);
+        y += 10;
+      }
+
+      drawFrame();
+
+      doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(`Total Hours: ${total.hours}h ${total.minutes}m`, marginLeft + 4, y + 6);
-
-      y += 16;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Project Totals", marginLeft, y);
+      doc.setFontSize(10.8);
+      doc.text("Project Totals", innerX, y);
       y += 6;
 
-      for (const [project, seconds] of Object.entries(report.projectSeconds || {})) {
-        const t = toHoursMinutes(seconds);
+      if (!workedProjects.length) {
+        doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
         doc.setFont("helvetica", "normal");
-        doc.text(`• ${project}: ${t.hours}h ${t.minutes}m`, marginLeft + 2, y);
-        y += 6;
-        if (y > 275) { doc.addPage(); y = 16; }
-      }
+        doc.setFontSize(9);
+        doc.text("No worked projects in selected date range.", innerX, y);
+        y += 8;
+      } else {
+        let chipX = innerX;
+        let chipY = y;
+        for (let i = 0; i < workedProjects.length; i += 1) {
+          const [project, seconds] = workedProjects[i];
+          const hm = toHoursMinutes(seconds);
+          const chipText = `${project}: ${hm.hours}h ${hm.minutes}m`;
+          const palette = [
+            [colors.chipBlue, colors.chipBlueText],
+            [colors.chipMint, colors.chipMintText],
+            [colors.chipAmber, colors.chipAmberText]
+          ][i % 3];
+          const w = Math.max(30, Math.min(84, doc.getTextWidth(chipText) + 9));
 
-      y += 3;
-      doc.setFont("helvetica", "bold");
-      doc.text("Worklogs", marginLeft, y); y += 7;
+          if (chipX + w > innerX + innerW) {
+            chipX = innerX;
+            chipY += 9;
+            ensureSpace(12, false);
+          }
 
-      for (const log of report.worklogs || []) {
-        const line = [log.issueKey || "", log.project || "", log.started || "", log.timeSpent || ""].join(" | ");
-        const wrapped = doc.splitTextToSize(line, contentWidth);
-        doc.setFont("helvetica", "bold");
-        doc.text(wrapped, marginLeft, y);
-        y += wrapped.length * 5;
-        if (log.comment) {
-          doc.setFont("helvetica", "normal");
-          const c = doc.splitTextToSize("Comment: " + log.comment, contentWidth - 4);
-          doc.text(c, marginLeft + 2, y);
-          y += c.length * 5;
+          drawChip(chipX, chipY, chipText, palette[0], palette[1]);
+          chipX += w + 3;
         }
-        y += 2;
-        if (y > 275) { doc.addPage(); y = 16; }
+        y = chipY + 10;
       }
 
-      doc.save("jira-worklogs-" + report.startDate + "-to-" + report.endDate + ".pdf");
+      ensureSpace(20, false);
+      doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.8);
+      doc.text("Worklog Activity", innerX, y);
+      y += 2;
+      drawTableHeader();
+
+      for (let i = 0; i < logs.length; i += 1) {
+        const log = logs[i];
+        const commentLines = doc.splitTextToSize(String(log.comment || "-"), 54);
+        const commentPreview = commentLines.slice(0, 2);
+        if (commentLines.length > 2) {
+          commentPreview[1] = `${commentPreview[1].slice(0, 18)}...`;
+        }
+
+        const rowHeight = Math.max(11, 4 + (commentPreview.length * 3.9));
+        ensureSpace(rowHeight + 2, true);
+
+        if (i % 2 === 0) {
+          doc.setFillColor(251, 253, 255);
+          doc.roundedRect(innerX, y - 1.5, innerW, rowHeight, 1.6, 1.6, "F");
+        }
+
+        doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.6);
+        doc.text(String(log.issueKey || "-"), innerX + 2, y + 3.1);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.4);
+        doc.text(String(log.project || "-"), innerX + 28, y + 3.1);
+        doc.text(formatDateLabel(log.started), innerX + 73, y + 3.1);
+        doc.text(String(log.timeSpent || "-"), innerX + 98, y + 3.1);
+
+        doc.setTextColor(colors.muted[0], colors.muted[1], colors.muted[2]);
+        doc.setFontSize(7.7);
+        doc.text(commentPreview.length ? commentPreview : ["-"], innerX + 118, y + 3.1);
+
+        y += rowHeight;
+      }
+
+      doc.setTextColor(118, 134, 156);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.text(`Generated by Jira Worklog Intelligence • Pages: ${pageNo}`, innerX, pageH - 6);
+
+      const safeUserName = String(report.name || "user")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-_]/g, "") || "user";
+
+      let monthName = "month";
+      const monthSource = String(report.startDate || "").trim();
+      if (monthSource) {
+        const monthDate = new Date(`${monthSource}T00:00:00`);
+        if (!Number.isNaN(monthDate.getTime())) {
+          monthName = monthDate.toLocaleString("en-US", { month: "long" });
+        }
+      }
+
+      doc.save(`${safeUserName}-${monthName}-jira-worklogs.pdf`);
     }
 
     selectAllProjectsEl.addEventListener("change", () => {
