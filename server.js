@@ -194,8 +194,7 @@ function secondsToHours(seconds) {
 }
 
 function normalizeProjectKeys(projectsInput) {
-  const DEFAULT_PROJECTS = ["CLUS", "EV", "IW", "WCI", "P3", "PSD", "NB", "UA"];
-  if (!projectsInput) return DEFAULT_PROJECTS;
+  if (!projectsInput) return [];
 
   let raw = [];
   if (Array.isArray(projectsInput)) {
@@ -212,7 +211,7 @@ function normalizeProjectKeys(projectsInput) {
     seen.add(key);
     unique.push(key);
   }
-  return unique.length ? unique : DEFAULT_PROJECTS;
+  return unique;
 }
 
 function resolveProjectLabel(projectKey, projectNameByKey) {
@@ -315,12 +314,13 @@ async function buildBootstrap(payload) {
 
 async function fetchProjectIssueKeys(authHeader, projectKey) {
   const keySet = new Set();
-  const jql = encodeURIComponent(`project=${projectKey}`);
+  const jql = encodeURIComponent(`project=${projectKey} ORDER BY key ASC`);
   const maxResults = 100;
-  let startAt = 0;
+  let nextPageToken = "";
 
   while (true) {
-    const url = `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${jql}&fields=key&startAt=${startAt}&maxResults=${maxResults}`;
+    const tokenPart = nextPageToken ? `&nextPageToken=${encodeURIComponent(nextPageToken)}` : "";
+    const url = `https://${JIRA_DOMAIN}/rest/api/3/search/jql?jql=${jql}&fields=key&maxResults=${maxResults}${tokenPart}`;
     const data = await jiraGet(url, authHeader);
     const issues = Array.isArray(data.issues) ? data.issues : [];
 
@@ -330,10 +330,11 @@ async function fetchProjectIssueKeys(authHeader, projectKey) {
       }
     }
 
-    startAt += issues.length;
-    if (!issues.length || startAt >= (data.total || 0)) {
+    if (!issues.length || data.isLast === true || !data.nextPageToken) {
       break;
     }
+
+    nextPageToken = String(data.nextPageToken);
   }
 
   return Array.from(keySet);
@@ -395,14 +396,19 @@ async function buildReport(payload, onProgress) {
   const projectNameByKey = new Map(
     accessibleProjects.map((project) => [String(project.key || "").trim().toUpperCase(), String(project.name || project.key || "")])
   );
+  const notifyProgress = typeof onProgress === "function" ? onProgress : () => {};
 
-  const projectSeconds = emptyProjectSeconds(projectKeys, projectNameByKey);
+  const normalizedProjectKeys = projectKeys.length
+    ? projectKeys
+    : accessibleProjects.map((project) => String(project.key || "").trim().toUpperCase()).filter(Boolean);
+  const projectSeconds = emptyProjectSeconds(normalizedProjectKeys, projectNameByKey);
   const matchedWorklogs = [];
+  const warnings = [];
 
-  onProgress({ phase: "start", message: "Starting report generation", currentProject: null });
+  notifyProgress({ phase: "start", message: "Starting report generation", currentProject: null });
 
-  for (const projectKey of projectKeys) {
-    onProgress({
+  for (const projectKey of normalizedProjectKeys) {
+    notifyProgress({
       phase: "project-start",
       currentProject: projectKey,
       message: `Loading issues for ${projectKey}`,
@@ -410,11 +416,24 @@ async function buildReport(payload, onProgress) {
       totalIssues: 0
     });
 
-    const issueKeys = await fetchProjectIssueKeys(authHeader, projectKey);
     const projectLabel = resolveProjectLabel(projectKey, projectNameByKey);
+    let issueKeys = [];
     let processedIssues = 0;
 
-    onProgress({
+    try {
+      issueKeys = await fetchProjectIssueKeys(authHeader, projectKey);
+    } catch (err) {
+      const message = `Skipping ${projectKey}: ${err.message || err}`;
+      warnings.push(message);
+      notifyProgress({
+        phase: "project-error",
+        currentProject: projectKey,
+        message
+      });
+      continue;
+    }
+
+    notifyProgress({
       phase: "project-start",
       currentProject: projectKey,
       message: `Processing ${issueKeys.length} issues in ${projectKey}`,
@@ -423,7 +442,14 @@ async function buildReport(payload, onProgress) {
     });
 
     await mapWithConcurrency(issueKeys, ISSUE_CONCURRENCY, async (issueKey) => {
-      const worklogs = await fetchIssueWorklogs(authHeader, issueKey);
+      let worklogs = [];
+
+      try {
+        worklogs = await fetchIssueWorklogs(authHeader, issueKey);
+      } catch (err) {
+        warnings.push(`Skipping ${issueKey}: ${err.message || err}`);
+        return;
+      }
 
       for (const log of worklogs) {
         const authorId = (log.author && log.author.accountId) || "";
@@ -455,7 +481,7 @@ async function buildReport(payload, onProgress) {
         processedIssues === 1 ||
         processedIssues % 10 === 0
       ) {
-        onProgress({
+        notifyProgress({
           phase: "project-progress",
           currentProject: projectKey,
           message: `Processed ${processedIssues}/${issueKeys.length} issues in ${projectKey}`,
@@ -465,7 +491,7 @@ async function buildReport(payload, onProgress) {
       }
     });
 
-    onProgress({
+    notifyProgress({
       phase: "project-done",
       currentProject: projectKey,
       message: `Completed ${projectKey}`,
@@ -484,12 +510,13 @@ async function buildReport(payload, onProgress) {
     email,
     startDate,
     endDate,
-    projects: projectKeys,
+    projects: normalizedProjectKeys,
     projectSeconds,
     projectHours: mapSecondsToHours(projectSeconds),
     totalSeconds,
     totalHours: secondsToHours(totalSeconds),
-    worklogs: matchedWorklogs
+    worklogs: matchedWorklogs,
+    warnings
   };
 }
 
